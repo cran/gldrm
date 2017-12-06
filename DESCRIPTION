@@ -1,9 +1,9 @@
 Package: gldrm
 Type: Package
 Title: Generalized Linear Density Ratio Models
-Version: 1.1
+Version: 1.4
 Authors@R: c(
-    person("Michael", "Wurm", email = "wurm@wisc.edu", role = c("aut", "cre")),
+    person("Michael", "Wurm", email = "wurm@uwalumni.com", role = c("aut", "cre")),
     person("Paul", "Rathouz", email = "rathouz@biostat.wisc.edu", role = "aut"))
 Description: Fits a generalized linear density ratio model (GLDRM).
     A GLDRM is a semiparametric generalized linear model.
@@ -16,15 +16,15 @@ Description: Fits a generalized linear density ratio model (GLDRM).
     with no loss of efficiency, i.e. the asymptotic variance is the same as if the 
     true exponential family distribution were known.
 Depends: R (>= 3.2.2)
-Imports: stats (>= 3.3.1)
+Imports: stats (>= 3.2.2)
 Suggests: testthat (>= 1.0.2)
 License: MIT + file LICENSE
 LazyData: TRUE
 RoxygenNote: 6.0.1
 NeedsCompilation: no
-Packaged: 2017-06-27 17:02:04 UTC; mike
+Packaged: 2017-12-06 00:46:23 UTC; mike
 Author: Michael Wurm [aut, cre],
   Paul Rathouz [aut]
-Maintainer: Michael Wurm <wurm@wisc.edu>
+Maintainer: Michael Wurm <wurm@uwalumni.com>
 Repository: CRAN
-Date/Publication: 2017-06-28 06:01:07 UTC
+Date/Publication: 2017-12-06 09:58:46 UTC

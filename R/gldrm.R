@@ -76,7 +76,7 @@
 #' \item \code{seEta} Standard errors for \eqn{\hat{\eta}} computed from \code{varbeta}.
 #' \item \code{theta} Vector containing the estimated tilt parameter for each observation.
 #' The tilted density function of the response variable is given by
-#' \deqn{f(y|x_i) = f_0(y) \exp(\theta y) / \int f_0(u) \exp(\theta_i u) du.}
+#' \deqn{f(y|x_i) = f_0(y) \exp(\theta_i y) / \int f_0(u) \exp(\theta_i u) du.}
 #' \item \code{bPrime} is a vector containing the mean of the tilted distribution,
 #' \eqn{b'(\theta_i)}, for each observation. \code{bPrime} should match \code{mu},
 #' except in cases where \code{theta} is capped for numerical stability.

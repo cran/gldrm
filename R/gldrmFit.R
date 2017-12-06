@@ -184,7 +184,7 @@ gldrmFit <- function(x, y, linkfun, linkinv, mu.eta, mu0=NULL, offset=NULL,
 
   ## Compute standard errors
   seBeta <- sqrt(diag(varbeta))
-  seEta <- sqrt(apply(x, 1, function(xx) crossprod(xx, varbeta) %*% xx))
+  seEta <- sqrt(pmax(0, apply(x, 1, function(xx) crossprod(xx, varbeta) %*% xx)))
   seMu <- dmudeta * seEta
   # seBetaSand <- sqrt(diag(varbetaSand))
   # seEtaSand <- sqrt(pmax(0, apply(x, 1, function(xx) crossprod(xx, varbetaSand) %*% xx)))

@@ -4,7 +4,7 @@
 \alias{gldrmCI}
 \title{Confidence intervals for gldrm coefficients}
 \usage{
-gldrmCI(gldrmFit, term, test = c("Wald", "LRT"), level = 0.95,
+gldrmCI(gldrmFit, term, test = c("Wald", "LRT", "Score"), level = 0.95,
   type = c("2-sided", "lb", "ub"), eps = 1e-10, maxiter = 100)
 }
 \arguments{
@@ -17,14 +17,15 @@ names match the formula syntax, but can be more complicated for categorical
 variables and interaction terms.}
 
 \item{test}{Character string for the type confidence interval. Options are
-"Wald" or "LRT" (for likelihood ratio).}
+"Wald", "LRT" (for likelihood ratio), and "Score".}
 
 \item{level}{Confidence level of the interval. Should be between zero and one.}
 
 \item{type}{Character string containing "2-sided" for a two-sided confidence interval,
 "lb" for a lower bound, or "ub" for an upper bound.}
 
-\item{eps}{Convergence threshold. Only applies for \code{test = "LRT"}.
+\item{eps}{Convergence threshold. Only applies for
+\code{test = "LRT"} and \code{test = "Score"}.
 Convergence is reached when likelihood ratio p-value is within \code{eps} of
 the target p-value, based on the level of the test. For example, a two-sided
 95\% confidence interval has target p-value of 0.025 for both the upper and
@@ -49,14 +50,16 @@ two applies for confidence bounds.
 applies for likelihood ratio intervals and bounds.
 \item \code{pvallo}/\code{pvalhi} For likelihood ratio intervals and bounds,
 the p-value at convergence is reported.
+\item \code{conv} Indicator for whether the confidence interval limit or bound
+converged.
 }
 }
 \description{
-Calculates a Wald or likelihood ratio confidence interval for a single gldrm
+Calculates a Wald, likelihood ratio, or score confidence interval for a single gldrm
 coefficient. Also calculates upper or lower confidence bounds. Wald confidence
 intervals and bounds are calculated from the standard errors which are available
-from the gldrm model fit. For likelihood ratio intervals and bounds, a bisection
-search method is used, which takes longer to run.
+from the gldrm model fit. For likelihood ratio and score intervals and bounds,
+a bisection search method is used, which takes longer to run.
 }
 \examples{
 data(iris, package="datasets")

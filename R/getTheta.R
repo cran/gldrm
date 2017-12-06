@@ -92,16 +92,12 @@ getTheta <- function(spt, f0, mu, thetaStart=NULL, thetaControl=theta.control())
     ## Argument checks
     if (length(f0) != sptN)
         stop("spt and f0 must be vectors of equal length.")
-    # if (length(unique(spt)) != sptN)
-    #     stop("spt must contain unique values.")
     if (any(f0 < 0))
         stop("f0 values cannot be negative.")
     if (min(mu)<m || max(mu)>M)
         stop("mu starting values must lie within the range of spt.")
     if (length(thetaStart) != n)
         stop("thetaStart must be a vector with length equal length(mu)")
-    # if (exp(max(thetaStart)*M)==Inf || exp(min(thetaStart)*m)==0)
-    #     stop("thetaStart values too extreme")
 
     ## Value does not change
     gMu <- g(mu, m, M)

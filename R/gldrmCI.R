@@ -1,10 +1,10 @@
 #' Confidence intervals for gldrm coefficients
 #'
-#' Calculates a Wald or likelihood ratio confidence interval for a single gldrm
+#' Calculates a Wald, likelihood ratio, or score confidence interval for a single gldrm
 #' coefficient. Also calculates upper or lower confidence bounds. Wald confidence
 #' intervals and bounds are calculated from the standard errors which are available
-#' from the gldrm model fit. For likelihood ratio intervals and bounds, a bisection
-#' search method is used, which takes longer to run.
+#' from the gldrm model fit. For likelihood ratio and score intervals and bounds,
+#' a bisection search method is used, which takes longer to run.
 #'
 #' @param gldrmFit A fitted gldrm model.
 #' @param term Character string containing the name of the coefficient of interest.
@@ -13,11 +13,12 @@
 #' names match the formula syntax, but can be more complicated for categorical
 #' variables and interaction terms.
 #' @param test Character string for the type confidence interval. Options are
-#' "Wald" or "LRT" (for likelihood ratio).
+#' "Wald", "LRT" (for likelihood ratio), and "Score".
 #' @param level Confidence level of the interval. Should be between zero and one.
 #' @param type Character string containing "2-sided" for a two-sided confidence interval,
 #' "lb" for a lower bound, or "ub" for an upper bound.
-#' @param eps Convergence threshold. Only applies for \code{test = "LRT"}.
+#' @param eps Convergence threshold. Only applies for
+#' \code{test = "LRT"} and \code{test = "Score"}.
 #' Convergence is reached when likelihood ratio p-value is within \code{eps} of
 #' the target p-value, based on the level of the test. For example, a two-sided
 #' 95\% confidence interval has target p-value of 0.025 for both the upper and
@@ -40,6 +41,8 @@
 #' applies for likelihood ratio intervals and bounds.
 #' \item \code{pvallo}/\code{pvalhi} For likelihood ratio intervals and bounds,
 #' the p-value at convergence is reported.
+#' \item \code{conv} Indicator for whether the confidence interval limit or bound
+#' converged.
 #' }
 #'
 #' @examples
@@ -59,9 +62,10 @@
 #' ci
 #'
 #' @export
-gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT"), level=.95,
+gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
                     type=c("2-sided", "lb", "ub"), eps=1e-10, maxiter=100)
 {
+    maxhalf <- 10  # hard-coded argument; no user input
     test <- match.arg(test)
     type <- match.arg(type)
     if (class(gldrmFit) != "gldrmFit")
@@ -92,128 +96,297 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT"), level=.95,
     cilo <- cihi <- NA  # initialze to NA for one-sided intervals
     iterlo <- iterhi <- NA  # initialize to NA for Wald or one-sided intervals
     pvallo <- pvalhi <- NA  # initialize to NA for Wald or one-sided intervals
+    convlo <- convhi <- NA  # initialize to NA for Wald or one-sided intervals
 
     if (type == "2-sided") {
         pvalTarget <- (1 - level) / 2
-        step <- stats::qt((level + 1) / 2, df2) * seBeta[id]  # length 2-sided of Wald CI
+        waldstep <- stats::qt((level + 1) / 2, df2) * seBeta[id]  # length 2-sided of Wald CI
     } else {
         pvalTarget <- 1 - level
-        step <- stats::qt(level, df2) * seBeta[id]  # length of 1-sided Wald CI
+        waldstep <- stats::qt(level, df2) * unname(seBeta[id])  # length of 1-sided Wald CI
     }
 
     ### Wald test CI
     if (test == "Wald" && type %in% c("2-sided", "lb"))
-        cilo <- unname(beta[id]) - step
+        cilo <- unname(beta[id]) - waldstep
     if (test == "Wald" && type %in% c("2-sided", "ub"))
-        cihi <- unname(beta[id]) + step
+        cihi <- unname(beta[id]) + waldstep
 
     ### Likelihood ratio CI
-    if (test=="LRT" && type %in% c("2-sided", "lb")) {
+    if (test %in% c("LRT", "Score") && type %in% c("2-sided", "lb")) {
         cilo.hi <- unname(beta[id])
         cilo.lo <- -Inf
+        cilo.try <- unname(beta[id]) - waldstep / 2  # initial step size is multiplied by 2
         pvallo.hi <- 1
         pvallo.lo <- 0
-        betaStart <- beta[-id]
-        f0Start <- f0
-        stepfact <- 1
+        betaStartlo.hi <- beta[-id]
+        f0Startlo.hi <- f0
         iterlo <- 0
-        conv <- FALSE
-        while (!conv && iterlo<maxiter) {
+        convlo <- FALSE
+        while (!convlo && iterlo<maxiter) {
             iterlo <- iterlo + 1
 
             if (cilo.lo == -Inf) {
-                cilo.try <- unname(beta[id]) - stepfact * step
-                stepfact <- stepfact * 2
+                cilo.try <- cilo.try - (beta[id] - cilo.try) * 2
+                # Once hi and lo estimates are obtained, the average betas must
+                # satisfy the convex hull condition
+                betaStart <- betaStartlo.hi
+                f0Start <- f0Startlo.hi
+                fit <- NULL
+                nhalf <- 0
+                while (is.null(fit) && nhalf<maxhalf) {
+                    # First try previous solution as starting values
+                    fit <- tryCatch({
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
+                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                              mu0=mu0, offset=offset + cilo.try * x[, id],
+                              gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStart))
+                    }, error = function(e) NULL)
+                    # Next, let gldrm function try to find starting values
+                    if (is.null(fit)) {
+                        fit <- tryCatch({
+                            gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
+                                  linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                                  mu0=mu0, offset=offset + cilo.try * x[, id],
+                                  gldrmControl=gldrm.control(f0Start=f0Start, betaStart=NULL))
+                        }, error = function(e) NULL)
+                    }
+                    # Finally, reduce the step size if no starting values can be found
+                    if (is.null(fit)) {
+                        nhalf <- nhalf + 1
+                        cilo.try <- (cilo.try + cilo.hi) / 2
+                    }
+                }
             } else {
-                # wt <- (pvalTarget - pvallo.lo) / (pvallo.hi - pvallo.lo)
-                wt <- .5
-                cilo.try <- (1-wt) * cilo.lo + wt * cilo.hi
+                cilo.try <- (cilo.lo + cilo.hi) / 2
+                betaStart <- (betaStartlo.hi + betaStartlo.lo) / 2
+                f0Start <- (f0Startlo.hi + f0Startlo.lo) / 2
+                fit <- NULL
+
+                # Analytically, betaStart should not violate the convex hull condition,
+                # but it is possible due to numerical error
+                fit <- tryCatch({
+                    gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
+                          linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                          mu0=mu0, offset=offset + cilo.try * x[, id],
+                          gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStart))
+                }, error = function(e) NULL)
+
+                # Next, try betaStart.lo
+                if (is.null(fit)) {
+                    fit <- tryCatch({
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
+                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                              mu0=mu0, offset=offset + cilo.try * x[, id],
+                              gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStartlo.lo))
+                    }, error = function(e) NULL)
+                }
+
+                # Next, try betaStart.hi
+                if (is.null(fit)) {
+                    fit <- tryCatch({
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
+                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                              mu0=mu0, offset=offset + cilo.try * x[, id],
+                              gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStartlo.hi))
+                    }, error = function(e) NULL)
+                }
+
+                # Next, try default starting values
+                if (is.null(fit)) {
+                    fit <- tryCatch({
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
+                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                              mu0=mu0, offset=offset + cilo.try * x[, id],
+                              gldrmControl=gldrm.control(f0Start=f0Start, betaStart=NULL))
+                    }, error = function(e) NULL)
+                }
             }
 
-            ## Use current beta values as starting values unless they violate the convex hull condition.
-            fit <- tryCatch({
-                gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                      linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
-                      mu0=mu0, offset=offset + cilo.try * x[, id],
-                      gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStart))
-            }, error=function(e) {
-                gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                      linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
-                      mu0=mu0, offset=offset + cilo.try * x[, id],
-                      gldrmControl=gldrm.control(f0Start=f0Start))
-            })
+            if (is.null(fit)) break
 
-            betaStart <- fit$beta
-            f0Start <- fit$f0
-            pvallo.try <- 1 - stats::pf(2 * (llik - fit$llik), 1, df2)
-            conv <- abs(pvallo.try -  pvalTarget) < eps
+            if (test == "LRT") {
+                pvallo.try <- 1 - stats::pf(2 * (llik - fit$llik), 1, df2)
+            } else {  # test == "Score"
+                bPrime2 <- fit$bPrime2
+                mu <- fit$mu
+                eta <- fit$eta
+                dmudeta <- mu.eta(eta)
+                wSqrt <- dmudeta / sqrt(bPrime2)
+                r <- (y-mu) / dmudeta
+                wtdx <- wSqrt * x
+                wtdr <- wSqrt * r
+                betastep <- qr.coef(qr(wtdx), wtdr)  # = (X'WX)^-1 (X'Wr)
+                betastep[is.na(betastep)] <- 0
+                score <- c(crossprod(wtdx, wtdr))
+                scorestat <- c(crossprod(score, betastep))
+                pvallo.try <- 1 - stats::pf(scorestat, 1, df2)
+            }
+
+            convlo <- abs(pvallo.try -  pvalTarget) < eps
 
             if (pvallo.try > pvalTarget) {
                 cilo.hi <- cilo.try
                 pvallo.hi <- pvallo.try
+                betaStartlo.hi <- fit$beta
+                f0Startlo.hi <- fit$f0
             } else {
                 cilo.lo <- cilo.try
                 pvallo.lo <- pvallo.try
+                betaStartlo.lo <- fit$beta
+                f0Startlo.lo <- fit$f0
             }
+
+            if (cilo.hi == cilo.lo) break
         }
-        cilo <- cilo.try
-        pvallo <- pvallo.try
+
+        if (convlo) {
+            cilo <- cilo.try
+            pvallo <- pvallo.try
+        } else {
+            # If not converged, use the narrow interval estimate
+            cilo <- cilo.hi
+            pvallo <- pvallo.hi
+        }
     }
 
-    if (test=="LRT" && type %in% c("2-sided", "ub")) {
+    if (test %in% c("LRT", "Score") && type %in% c("2-sided", "ub")) {
         cihi.hi <- Inf
         cihi.lo <- unname(beta[id])
         pvalhi.hi <- 0
         pvalhi.lo <- 1
-        betaStart <- beta[-id]
-        f0Start <- f0
-        stepfact <- 1
+        cihi.try <- unname(beta[id]) + waldstep / 2  # initial step size is multiplied by 2
+        pvalhi.hi <- 0
+        pvalhi.lo <- 1
+        betaStarthi.lo <- beta[-id]
+        f0Starthi.lo <- f0
         iterhi <- 0
-        conv <- FALSE
-        while (!conv && iterhi<maxiter) {
+        convhi <- FALSE
+        while (!convhi && iterhi<maxiter) {
             iterhi <- iterhi + 1
 
             if (cihi.hi == Inf) {
-                cihi.try <- unname(beta[id]) + stepfact * step
-                stepfact <- stepfact * 2
+                cihi.try <- cihi.try + (cihi.try - beta[id]) * 2
+                betaStart <- betaStarthi.lo
+                f0Start <- f0Starthi.lo
+                fit <- NULL
+                nhalf <- 0
+                while (is.null(fit) && nhalf<maxhalf) {
+                    # First try previous solution as starting values
+                    fit <- tryCatch({
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
+                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                              mu0=mu0, offset=offset + cihi.try * x[, id],
+                              gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStart))
+                    }, error = function(e) NULL)
+                    # Next, let gldrm function try to find starting values
+                    if (is.null(fit)) {
+                        fit <- tryCatch({
+                            gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
+                                  linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                                  mu0=mu0, offset=offset + cihi.try * x[, id],
+                                  gldrmControl=gldrm.control(f0Start=f0Start, betaStart=NULL))
+                        }, error = function(e) NULL)
+                    }
+                    # Finally, reduce the step size if no starting values can be found
+                    if (is.null(fit)) {
+                        nhalf <- nhalf + 1
+                        cihi.try <- (cihi.try + cihi.lo) / 2
+                    }
+                }
             } else {
-                # wt <- (pvalTarget - pvalhi.hi) / (pvalhi.lo - pvalhi.hi)
-                wt <- .5
-                cihi.try <- wt * cihi.lo + (1-wt) * cihi.hi
+                cihi.try <- (cihi.lo + cihi.hi) / 2
+                betaStart <- (betaStarthi.hi + betaStarthi.lo) / 2
+                f0Start <- (f0Starthi.hi + f0Starthi.lo) / 2
+                fit <- NULL
+
+                # Analytically, betaStart should not violate the convex hull condition,
+                # but it is possible due to numerical error
+                fit <- tryCatch({
+                    gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
+                          linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                          mu0=mu0, offset=offset + cihi.try * x[, id],
+                          gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStart))
+                }, error = function(e) NULL)
+
+                if (is.null(fit)) {
+                    fit <- tryCatch({
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
+                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                              mu0=mu0, offset=offset + cihi.try * x[, id],
+                              gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStarthi.lo))
+                    }, error = function(e) NULL)
+                }
+
+                if (is.null(fit)) {
+                    fit <- tryCatch({
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
+                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                              mu0=mu0, offset=offset + cihi.try * x[, id],
+                              gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStarthi.hi))
+                    }, error = function(e) NULL)
+                }
+
+                if (is.null(fit)) {
+                    fit <- tryCatch({
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
+                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                              mu0=mu0, offset=offset + cihi.try * x[, id],
+                              gldrmControl=gldrm.control(f0Start=f0Start, betaStart=NULL))
+                    }, error = function(e) NULL)
+                }
             }
 
-            ## Use current beta values as starting values unless they violate the convex hull condition.
-            fit <- tryCatch({
-                gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                      linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
-                      mu0=mu0, offset=offset + cihi.try * x[, id],
-                      gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStart))
-            }, error=function(e) {
-                gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                      linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
-                      mu0=mu0, offset=offset + cihi.try * x[, id],
-                      gldrmControl=gldrm.control(f0Start=f0Start))
-            })
+            if (is.null(fit)) break
 
-            betaStart <- fit$beta
-            f0Start <- fit$f0
-            pvalhi.try <- 1 - stats::pf(2 * (llik - fit$llik), 1, df2)
-            conv <- abs(pvalhi.try -  pvalTarget) < eps
+            if (test == "LRT") {
+                pvalhi.try <- 1 - stats::pf(2 * (llik - fit$llik), 1, df2)
+            } else {  # test == "Score"
+                bPrime2 <- fit$bPrime2
+                mu <- fit$mu
+                eta <- fit$eta
+                dmudeta <- mu.eta(eta)
+                wSqrt <- dmudeta / sqrt(bPrime2)
+                r <- (y-mu) / dmudeta
+                wtdx <- wSqrt * x
+                wtdr <- wSqrt * r
+                betastep <- qr.coef(qr(wtdx), wtdr)  # = (X'WX)^-1 (X'Wr)
+                betastep[is.na(betastep)] <- 0
+                score <- c(crossprod(wtdx, wtdr))
+                scorestat <- c(crossprod(score, betastep))
+                pvalhi.try <- 1 - stats::pf(scorestat, 1, df2)
+            }
+
+            convhi <- abs(pvalhi.try -  pvalTarget) < eps
 
             if (pvalhi.try > pvalTarget) {
                 cihi.lo <- cihi.try
                 pvalhi.lo <- pvalhi.try
+                betaStarthi.lo <- fit$beta
+                f0Starthi.lo <- fit$f0
             } else {
                 cihi.hi <- cihi.try
                 pvalhi.hi <- pvalhi.try
+                betaStarthi.hi <- fit$beta
+                f0Starthi.hi <- fit$f0
             }
+
+            if (cihi.hi == cihi.lo) break
         }
-        cihi <- cihi.try
-        pvalhi <- pvalhi.try
+
+        if (convhi) {
+            cihi <- cihi.try
+            pvalhi <- pvalhi.try
+        } else {
+            # If not converged, use the narrow interval estimate
+            cihi <- cihi.lo
+            pvalhi <- pvalhi.lo
+        }
     }
 
     ci <- list(term=term, test=test, level=level, type=type, cilo=cilo, cihi=cihi,
-               iterlo=iterlo, iterhi=iterhi, pvallo=pvallo, pvalhi=pvalhi)
+               iterlo=iterlo, iterhi=iterhi, pvallo=pvallo, pvalhi=pvalhi,
+               convlo=convlo, convhi=convhi)
     class(ci) <- "gldrmCI"
     ci
 }
@@ -236,6 +409,7 @@ print.gldrmCI <- function(x, digits=3, ...)
 
     if (x$test == "Wald") test <- "Wald"
     if (x$test == "LRT") test <- "likelihood ratio"
+    if (x$test == "Score") test <- "score"
 
     if (x$type == "2-sided") {
         cat('\n', level, "% ", test, " confidence interval for ", x$term, ":\n", sep='')
