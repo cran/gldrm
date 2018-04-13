@@ -6,7 +6,8 @@
 #' from the gldrm model fit. For likelihood ratio and score intervals and bounds,
 #' a bisection search method is used, which takes longer to run.
 #'
-#' @param gldrmFit A fitted gldrm model.
+#' @param gldrmFit A gldrm model fit. Must be an S3 object of class "gldrm",
+#' returned from the \code{gldrm} function.
 #' @param term Character string containing the name of the coefficient of interest.
 #' The coefficient names are the names of the beta component of the fitted model
 #' object. They can also be obtained from the printed model output. Usually the
@@ -49,13 +50,8 @@
 #' data(iris, package="datasets")
 #'
 #' ### Fit gldrm with all variables
-#' lf <- make.link("log")
-#' linkfun <- lf$linkfun  # this is equivalent to function(mu) log(mu)
-#' linkinv <- lf$linkinv  # this is equivalent to function(eta) exp(eta)
-#' mu.eta <- lf$mu.eta  # this is equivalent to function(eta) exp(eta)
-#'
 #' fit <- gldrm(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width + Species,
-#'              data=iris, linkfun, linkinv, mu.eta)
+#'              data=iris, link="log")
 #'
 #' ### Wald 95% confidence interval for Sepal.Width
 #' ci <- gldrmCI(fit, "Sepal.Width", test="Wald", level=.95, type="2-sided")
@@ -68,23 +64,23 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
     maxhalf <- 10  # hard-coded argument; no user input
     test <- match.arg(test)
     type <- match.arg(type)
-    if (class(gldrmFit) != "gldrmFit")
-        stop("gldrmFit should be an object of class gldrmFit, returned from the gldrm function.")
+    if (class(gldrmFit) != "gldrm")
+        stop("gldrmFit should be an object of class gldrm, returned from the gldrm function.")
     if (!(term %in% names(gldrmFit$beta)))
         stop("term should be the name of a name from the fitted coefficient vector.")
     if (!(level>0 && level<1))
         stop("level should be between zero and one.")
     if (!(eps > 0))
         stop("eps should be a small value greater than zero.")
+    if (!is.null(gldrmFit$sampprobs) && test=="Score")
+        stop("Score confidence intervals with sampling weights are not currently supported.")
 
     mf <- model.frame(gldrmFit$formula, gldrmFit$data)
     x <- stats::model.matrix(attr(mf, "terms"), mf)
     attributes(x)[c("assign", "contrasts")] <- NULL
     y <- stats::model.response(mf, type="numeric")
     offset <- gldrmFit$object
-    linkfun <- gldrmFit$linkfun
-    linkinv <- gldrmFit$linkinv
-    mu.eta <- gldrmFit$mu.eta
+    link <- gldrmFit$link
     mu0 <- gldrmFit$mu0
     f0 <- gldrmFit$f0
     offset <- gldrmFit$offset
@@ -137,16 +133,14 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
                 while (is.null(fit) && nhalf<maxhalf) {
                     # First try previous solution as starting values
                     fit <- tryCatch({
-                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL, link=link,
                               mu0=mu0, offset=offset + cilo.try * x[, id],
                               gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStart))
                     }, error = function(e) NULL)
                     # Next, let gldrm function try to find starting values
                     if (is.null(fit)) {
                         fit <- tryCatch({
-                            gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                                  linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                            gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL, link=link,
                                   mu0=mu0, offset=offset + cilo.try * x[, id],
                                   gldrmControl=gldrm.control(f0Start=f0Start, betaStart=NULL))
                         }, error = function(e) NULL)
@@ -166,8 +160,7 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
                 # Analytically, betaStart should not violate the convex hull condition,
                 # but it is possible due to numerical error
                 fit <- tryCatch({
-                    gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                          linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                    gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL, link=link,
                           mu0=mu0, offset=offset + cilo.try * x[, id],
                           gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStart))
                 }, error = function(e) NULL)
@@ -175,8 +168,7 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
                 # Next, try betaStart.lo
                 if (is.null(fit)) {
                     fit <- tryCatch({
-                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL, link=link,
                               mu0=mu0, offset=offset + cilo.try * x[, id],
                               gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStartlo.lo))
                     }, error = function(e) NULL)
@@ -185,8 +177,7 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
                 # Next, try betaStart.hi
                 if (is.null(fit)) {
                     fit <- tryCatch({
-                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL, link=link,
                               mu0=mu0, offset=offset + cilo.try * x[, id],
                               gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStartlo.hi))
                     }, error = function(e) NULL)
@@ -195,8 +186,7 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
                 # Next, try default starting values
                 if (is.null(fit)) {
                     fit <- tryCatch({
-                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL, link=link,
                               mu0=mu0, offset=offset + cilo.try * x[, id],
                               gldrmControl=gldrm.control(f0Start=f0Start, betaStart=NULL))
                     }, error = function(e) NULL)
@@ -207,11 +197,13 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
 
             if (test == "LRT") {
                 pvallo.try <- 1 - stats::pf(2 * (llik - fit$llik), 1, df2)
-            } else {  # test == "Score"
+            } else {
+                # else test == "Score"
+                # not designed to incorporate sampling weights
                 bPrime2 <- fit$bPrime2
                 mu <- fit$mu
                 eta <- fit$eta
-                dmudeta <- mu.eta(eta)
+                dmudeta <- link$mu.eta(eta)
                 wSqrt <- dmudeta / sqrt(bPrime2)
                 r <- (y-mu) / dmudeta
                 wtdx <- wSqrt * x
@@ -274,16 +266,14 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
                 while (is.null(fit) && nhalf<maxhalf) {
                     # First try previous solution as starting values
                     fit <- tryCatch({
-                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL, link=link,
                               mu0=mu0, offset=offset + cihi.try * x[, id],
                               gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStart))
                     }, error = function(e) NULL)
                     # Next, let gldrm function try to find starting values
                     if (is.null(fit)) {
                         fit <- tryCatch({
-                            gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                                  linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                            gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL, link=link,
                                   mu0=mu0, offset=offset + cihi.try * x[, id],
                                   gldrmControl=gldrm.control(f0Start=f0Start, betaStart=NULL))
                         }, error = function(e) NULL)
@@ -303,16 +293,14 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
                 # Analytically, betaStart should not violate the convex hull condition,
                 # but it is possible due to numerical error
                 fit <- tryCatch({
-                    gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                          linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                    gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL, link=link,
                           mu0=mu0, offset=offset + cihi.try * x[, id],
                           gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStart))
                 }, error = function(e) NULL)
 
                 if (is.null(fit)) {
                     fit <- tryCatch({
-                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL, link=link,
                               mu0=mu0, offset=offset + cihi.try * x[, id],
                               gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStarthi.lo))
                     }, error = function(e) NULL)
@@ -320,8 +308,7 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
 
                 if (is.null(fit)) {
                     fit <- tryCatch({
-                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL, link=link,
                               mu0=mu0, offset=offset + cihi.try * x[, id],
                               gldrmControl=gldrm.control(f0Start=f0Start, betaStart=betaStarthi.hi))
                     }, error = function(e) NULL)
@@ -329,8 +316,7 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
 
                 if (is.null(fit)) {
                     fit <- tryCatch({
-                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL,
-                              linkfun=linkfun, linkinv=linkinv, mu.eta=mu.eta,
+                        gldrm(y ~ x[, -id, drop=FALSE] - 1, data=NULL, link=link,
                               mu0=mu0, offset=offset + cihi.try * x[, id],
                               gldrmControl=gldrm.control(f0Start=f0Start, betaStart=NULL))
                     }, error = function(e) NULL)
@@ -345,7 +331,7 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
                 bPrime2 <- fit$bPrime2
                 mu <- fit$mu
                 eta <- fit$eta
-                dmudeta <- mu.eta(eta)
+                dmudeta <- link$mu.eta(eta)
                 wSqrt <- dmudeta / sqrt(bPrime2)
                 r <- (y-mu) / dmudeta
                 wtdx <- wSqrt * x

@@ -11,12 +11,17 @@
 #' true exponential family distribution were known.
 #'
 #' @import stats
+#' @importFrom graphics abline hist par plot
 #'
 #' @param formula An object of class "formula".
 #' @param data An optional data frame containing the variables in the model.
-#' @param linkfun Vectorized link function.
-#' @param linkinv Vectorized inverse link function.
-#' @param mu.eta Vectorized derivative of the inverse link function.
+#' @param link Link function. Can be a character string to be passed to the
+#' \code{make.link} function in the \code{stats} package (e.g. "identity",
+#' "logit", or "log").
+#' Alternatively, \code{link} can be a list containing three functions named
+#' \code{linkfun}, \code{linkinv}, and \code{mu.eta}. The first is the link
+#' function. The second is the inverse link function. The third is the derivative
+#' of the inverse link function. All three functions must be vectorized.
 #' @param mu0 Mean of the reference distribution. The reference distribution is
 #' not unique unless its mean is restricted to a specific value. This value can
 #' be any number within the range of observed values, but values near the boundary
@@ -24,6 +29,13 @@
 #' being the default value.
 #' @param offset Known component of the linear term. Offset must be passed through
 #' this argument - offset terms in the formula will be ignored.
+#' value and covariate values. If sampling weights are a function of both the
+#' response value and covariates, then \code{sampprobs} must be a \eqn{n \times q}
+#' matrix, where \eqn{n} is the number of observations and \eqn{q} is the number
+#' of unique observed values in the response vector. If sampling weights do not
+#' depend on the covariate values, then \code{sampprobs} may alternatively be passed
+#' as a vector of length \eqn{n}. All values must be nonnegative and are assumed to
+#' correspond to the sorted response values in increasing order.
 #' @param gldrmControl Optional control arguments.
 #' Passed as an object of class "gldrmControl", which is constructed by the
 #' \code{gldrm.control} function.
@@ -41,13 +53,13 @@
 #' \code{f0.control} function.
 #' See \code{f0.control} documentation for details.
 #'
-#' @return An S3 object of class "gldrmFit". See details.
+#' @return An S3 object of class "gldrm". See details.
 #'
 #' @details The arguments \code{linkfun}, \code{linkinv}, and \code{mu.eta}
 #' mirror the "link-glm" class. Objects of this class can be created with the
 #' \code{stats::make.link} function.
 #'
-#' The "gldrmFit" class is a list of the following items.
+#' The "gldrm" class is a list of the following items.
 #' \itemize{
 #' \item \code{conv} Logical indicator for whether the gldrm algorithm
 #' converged within the iteration limit.
@@ -88,6 +100,9 @@
 #' \eqn{\hat{f}(y_i | x_i)}, for each observation. The semiparametric
 #' log-likelihood is equal to
 #' \deqn{\sum_{i=1}^n \log \hat{f}(y_i | x_i).}
+#' \item \code{sampprobs} If sampling probabilities were passed through the
+#' \code{sampprobs} argument, then they are returned here in matrix form.
+#' Each row corresponds to an observation.
 #' \item \code{llikNull} Log-likelihood of the null model with no covariates.
 #' \item \code{lr.stat} Likelihood ratio test statistic comparing fitted model to
 #' the null model. It is calculated as \eqn{2 \times (llik - llik_0) / (p-1)}.
@@ -104,28 +119,38 @@
 #' Only returned if \code{returnf0ScoreInfo = TRUE} in the gldrmControl arguments.
 #' \item \code{formula} Model formula.
 #' \item \code{data} Model data frame.
-#' \item \code{linkfun} Link function.
-#' \item \code{linkinv} Inverse link function.
-#' \item \code{mu.eta} Derivative of inverse link function.
+#' \item \code{link} Link function. If a character string was passed to the
+#' \code{link} argument, then this will be an object of class "link-glm".
+#' Otherwise, it will be the list of three functions passed to the \code{link} argument.
 #' }
 #'
 #' @examples
 #' data(iris, package="datasets")
 #'
-#' lf <- make.link("log")
-#' linkfun <- lf$linkfun  # this is equivalent to function(mu) log(mu)
-#' linkinv <- lf$linkinv  # this is equivalent to function(eta) exp(eta)
-#' mu.eta <- lf$mu.eta  # this is equivalent to function(eta) exp(eta)
-#'
+#' # Fit a gldrm with log link
 #' fit <- gldrm(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width + Species,
-#'              data=iris, linkfun, linkinv, mu.eta)
+#'              data=iris, link="log")
 #' fit
 #'
+#' # Fit a gldrm with custom link function
+#' link <- list()
+#' link$linkfun <- function(mu) log(mu)^3
+#' link$linkinv <- function(eta) exp(eta^(1/3))
+#' link$mu.eta <- function(eta) exp(eta^(1/3)) * 1/3 * eta^(-2/3)
+#' fit2 <- gldrm(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width + Species,
+#'               data=iris, link=link)
+#' fit2
+#'
 #' @export
-gldrm <- function(formula, data=NULL, linkfun, linkinv, mu.eta, mu0=NULL, offset=NULL,
+gldrm <- function(formula, data=NULL, link="identity", mu0=NULL, offset=NULL,
                   gldrmControl=gldrm.control(), thetaControl=theta.control(),
                   betaControl=beta.control(), f0Control=f0.control())
 {
+    sampprobs <- NULL  # Sampling probabilities argument is not yet supported
+    # param sampprobs Optional sampling probabilities or relative probabilities.
+    # This is the probability or relative probability that each observation is sampled,
+    # conditional on the response.
+    
     mf <- model.frame(formula, data)
     x <- stats::model.matrix(attr(mf, "terms"), mf)
     attributes(x)[c("assign", "contrasts")] <- NULL
@@ -133,6 +158,14 @@ gldrm <- function(formula, data=NULL, linkfun, linkinv, mu.eta, mu0=NULL, offset
     if (is.null(offset)) offset <- rep(0, nrow(x))
     if (length(offset) != nrow(x))
         stop("offset should be NULL or a vector with length equal to the number of observations.")
+
+    ## Create link, inverse link, and mu.eta
+    if (is.character(link)) {
+        link <- stats::make.link(link)
+    } else if (!is.list(link) || !(all(c("linkfun", "linkinv", "mu.eta") %in% names(link)))) {
+        stop(paste0("link should be a character string or a list containing ",
+                    "functions named linkfun, linkinv, and mu.eta"))
+    }
 
     yMin <- min(y)
     yMax <- max(y)
@@ -142,9 +175,9 @@ gldrm <- function(formula, data=NULL, linkfun, linkinv, mu.eta, mu0=NULL, offset
     Y <- function(z) z * (yMax - yMin) / 2 + yMed
     z <- Z(y)  # y standardized to interval [-1, 1]
 
-    linkfunZ <- function(muZ) linkfun(Y(muZ))
-    linkinvZ <- function(eta) Z(linkinv(eta))
-    mu.etaZ <- function(eta) 2 / (yMax - yMin) * mu.eta(eta)
+    linkfunZ <- function(muZ) link$linkfun(Y(muZ))
+    linkinvZ <- function(eta) Z(link$linkinv(eta))
+    mu.etaZ <- function(eta) 2 / (yMax - yMin) * link$mu.eta(eta)
 
     if (is.null(mu0)) {
         mu0Z <- NULL
@@ -152,14 +185,14 @@ gldrm <- function(formula, data=NULL, linkfun, linkinv, mu.eta, mu0=NULL, offset
         mu0Z <- Z(mu0)
     }
 
-    modZ <- gldrmFit(x=x, y=z, linkfun=linkfunZ, linkinv=linkinvZ, mu.eta=mu.etaZ, mu0=mu0Z, offset=offset,
+    modZ <- gldrmFit(x=x, y=z, linkfun=linkfunZ, linkinv=linkinvZ, mu.eta=mu.etaZ,
+                     mu0=mu0Z, offset=offset, sampprobs=sampprobs,
                      gldrmControl=gldrmControl, thetaControl=thetaControl,
                      betaControl=betaControl, f0Control=f0Control)
 
     modZ$mu <- Y(modZ$mu)
-    muetaAdj <- mu.eta(modZ$eta) / mu.etaZ(modZ$eta)
+    muetaAdj <- link$mu.eta(modZ$eta) / mu.etaZ(modZ$eta)
     modZ$seMu <- modZ$seMu * muetaAdj
-    # modZ$seMuSand <- modZ$seMuSand * muetaAdj
     modZ$mu0 <- Y(modZ$mu0)
     modZ$spt <- Y(modZ$spt)
     modZ$theta <- modZ$theta * 2 / (yMax - yMin)
@@ -168,13 +201,10 @@ gldrm <- function(formula, data=NULL, linkfun, linkinv, mu.eta, mu0=NULL, offset
     names(modZ$beta) <- colnames(x)
     modZ$formula <- formula
     modZ$data <- data.frame(mf)
-    modZ$linkfun <- linkfun
-    modZ$linkinv <- linkinv
-    modZ$mu.eta <- mu.eta
+    modZ$link <- link
     modZ$offset <- offset
 
-    # Note: returning link function arguments on original scale
-    #       not returning x, y, offset
+    # Note: returning link function arguments on original scale; not returning x, y, or offset.
 
     modZ
 }

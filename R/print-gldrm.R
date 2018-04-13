@@ -3,14 +3,14 @@
 #' Prints fitted coefficients and standard errors, along with a likelihood ratio
 #' test against the null model.
 #'
-#' @param x S3 object of class gldrmFit, returned from the gldrm function.
+#' @param x S3 object of class "gldrm", returned from the \code{gldrm} function.
 #' @param digits Number of digits for rounding.
 #' @param ... Unused. Additional arguments for print method.
 #'
 #' @export
-print.gldrmFit <- function(x, digits=3, ...)
+print.gldrm <- function(x, digits=3, ...)
 {
-    # Extract items from gldrmFit object
+    # Extract items from gldrm object
     beta <- x$beta
     seBeta <- x$seBeta
     lr.stat <- signif(x$lr.stat, digits)

@@ -8,7 +8,8 @@ gldrmCI(gldrmFit, term, test = c("Wald", "LRT", "Score"), level = 0.95,
   type = c("2-sided", "lb", "ub"), eps = 1e-10, maxiter = 100)
 }
 \arguments{
-\item{gldrmFit}{A fitted gldrm model.}
+\item{gldrmFit}{A gldrm model fit. Must be an S3 object of class "gldrm",
+returned from the \code{gldrm} function.}
 
 \item{term}{Character string containing the name of the coefficient of interest.
 The coefficient names are the names of the beta component of the fitted model
@@ -65,13 +66,8 @@ a bisection search method is used, which takes longer to run.
 data(iris, package="datasets")
 
 ### Fit gldrm with all variables
-lf <- make.link("log")
-linkfun <- lf$linkfun  # this is equivalent to function(mu) log(mu)
-linkinv <- lf$linkinv  # this is equivalent to function(eta) exp(eta)
-mu.eta <- lf$mu.eta  # this is equivalent to function(eta) exp(eta)
-
 fit <- gldrm(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width + Species,
-             data=iris, linkfun, linkinv, mu.eta)
+             data=iris, link="log")
 
 ### Wald 95\% confidence interval for Sepal.Width
 ci <- gldrmCI(fit, "Sepal.Width", test="Wald", level=.95, type="2-sided")

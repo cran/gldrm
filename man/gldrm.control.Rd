@@ -4,7 +4,7 @@
 \alias{gldrm.control}
 \title{Control arguments for \code{gldrm} algorithm}
 \usage{
-gldrm.control(eps = 1e-10, maxiter = 100, returnfTiltMatrix = FALSE,
+gldrm.control(eps = 1e-10, maxiter = 100, returnfTiltMatrix = TRUE,
   returnf0ScoreInfo = FALSE, print = FALSE, betaStart = NULL,
   f0Start = NULL)
 }
@@ -21,7 +21,7 @@ each observation. This is a matrix with nrow equal to the number of
 observations and ncol equal to the number of unique response values observed.}
 
 \item{returnf0ScoreInfo}{Logical. If \code{TRUE}, the score and information for
-\code{log(f0)} are returned as components of the \code{gldrmFit} object.}
+\code{log(f0)} are returned as components of the "gldrm" object.}
 
 \item{print}{Logical. If \code{TRUE}, the relative change in the log-likelihood
 will be printed after each iteration.}

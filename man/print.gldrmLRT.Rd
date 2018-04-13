@@ -7,7 +7,7 @@
 \method{print}{gldrmLRT}(x, digits = 3, ...)
 }
 \arguments{
-\item{x}{An S3 object of class 'gldrmLRT'.}
+\item{x}{S3 object of class 'gldrmLRT', returned from the \code{gldrmLRT} function.}
 
 \item{digits}{Number of digits for rounding.}
 

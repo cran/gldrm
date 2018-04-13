@@ -1,8 +1,8 @@
-#' Predict method for a gldrmFit object
+#' Predict method for a gldrm object
 #'
 #' Obtains predicted probabilities, predicted class, or linear predictors.
 #'
-#' @param object An "ordinalNetFit" S3 object.
+#' @param object S3 object of class "gldrm", returned from the \code{gldrm} function.
 #' @param newdata Optional data frame. If NULL, fitted values will be obtained
 #' for the training data.
 #' @param type The type of prediction required.  Type "link" returns the linear
@@ -20,20 +20,18 @@
 #' @return The object returned depends on \code{type}.
 #'
 #' @export
-predict.gldrmFit <- function(object, newdata=NULL,
-                           type=c("link", "response", "terms", "fTilt"),
-                           se.fit=FALSE, offset=NULL, ...)
+predict.gldrm <- function(object, newdata=NULL,
+                          type=c("link", "response", "terms", "fTilt"),
+                          se.fit=FALSE, offset=NULL, ...)
 {
     type <- match.arg(type)
-    if (class(object) != "gldrmFit")
-        stop("Must pass a gldrmFit object returned from the gldrm function.")
 
     # Extract fitted model estimates and link function
     beta <- object$beta
     varbeta <- object$varbeta
     seBeta <- object$seBeta
-    linkinv <- object$linkinv
-    mu.eta <- object$mu.eta
+    linkinv <- object$link$linkinv
+    mu.eta <- object$link$mu.eta
     spt <- object$spt
     f0 <- object$f0
     mu0 <- object$mu0
@@ -73,7 +71,11 @@ predict.gldrmFit <- function(object, newdata=NULL,
             if (!is.null(object$fTiltMatrix)) {
                 out <- object$fTiltMatrix
             } else {
-                th <- getTheta(spt=spt, f0=f0, mu=object$mu, thetaStart=NULL)
+                th <- getTheta(spt=spt, f0=f0, mu=object$mu, 
+                               sampprobs=matrix(1, nrow=length(object$mu), ncol=length(f0)), 
+                               ySptIndex=rep(1, length(object$mu)),
+                               thetaStart=NULL)
+                # ySptIndex values don't matter; only used to compute log-likelihood
                 fTiltMatrix <- t(th$fTilt)
                 out <- fTiltMatrix
             }
@@ -131,7 +133,11 @@ predict.gldrmFit <- function(object, newdata=NULL,
     }
 
     if (type == "fTilt") {
-        th <- getTheta(spt=spt, f0=f0, mu=mu, thetaStart=NULL)
+        th <- getTheta(spt=spt, f0=f0, mu=mu, 
+                       sampprobs=matrix(1, nrow=length(mu), ncol=length(f0)),
+                       ySptIndex=rep(1, length(mu)),
+                       thetaStart=NULL)
+        # ySptIndex values don't matter; only used to compute log-likelihood
         fTiltMatrix <- t(th$fTilt)
         out <- fTiltMatrix
     }

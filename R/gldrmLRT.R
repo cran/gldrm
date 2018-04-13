@@ -7,10 +7,10 @@
 #' \eqn{n} is the number of observations and \eqn{p} is the number of parameters
 #' in the full model.
 #'
-#' @param gldrmFit The full model. An object of S3 class 'gldrmFit' returned from
-#' the gldrm function.
-#' @param gldrmFitNull The sub-model being tested under the null hypotheses.
-#' An object of S3 class 'gldrmFit' returned from the gldrm function.
+#' @param gldrmFit The full model. Must be an object of S3 class 'gldrm' returned from
+#' the \code{gldrm} function.
+#' @param gldrmNull The sub-model being tested under the null hypotheses.
+#' Must be an object of S3 class 'gldrm' returned from the \code{gldrm} function.
 #'
 #' @return An S3 object of class 'gldrmLRT', containing numerator and denominator
 #' degrees of freedom, an F-statistic, and a p-value.
@@ -19,40 +19,35 @@
 #' data(iris, package="datasets")
 #'
 #' ### Fit gldrm with all variables
-#' lf <- make.link("log")
-#' linkfun <- lf$linkfun  # this is equivalent to function(mu) log(mu)
-#' linkinv <- lf$linkinv  # this is equivalent to function(eta) exp(eta)
-#' mu.eta <- lf$mu.eta  # this is equivalent to function(eta) exp(eta)
-#'
 #' fit <- gldrm(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width + Species,
-#'              data=iris, linkfun, linkinv, mu.eta)
+#'              data=iris, link="log")
 #'
 #' ### Fit gldrm without the categorical variable "Species"
 #' fit0 <- gldrm(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width,
-#'               data=iris, linkfun, linkinv, mu.eta)
+#'               data=iris, link="log")
 #'
 #' ### Likelihood ratio test for the nested models
 #' lrt <- gldrmLRT(fit, fit0)
 #' lrt
 #'
 #' @export
-gldrmLRT <- function(gldrmFit, gldrmFitNull)
+gldrmLRT <- function(gldrmFit, gldrmNull)
 {
     beta <- gldrmFit$beta
-    beta0 <- gldrmFitNull$beta
+    beta0 <- gldrmNull$beta
     p <- sum(!is.na(beta))
     p0 <- sum(!is.na(beta0))
     n <- length(gldrmFit$mu)
-    n0 <- length(gldrmFitNull$mu)
+    n0 <- length(gldrmNull$mu)
     llik <- gldrmFit$llik
-    llik0 <- gldrmFitNull$llik
+    llik0 <- gldrmNull$llik
 
-    if (class(gldrmFit) != "gldrmFit")
-        stop("gldrmFit must be an S3 object of class gldrmFit.")
-    if (class(gldrmFitNull) != "gldrmFit")
-        stop("gldrmFitNull must be an S3 object of class gldrmFit.")
+    if (class(gldrmFit) != "gldrm")
+        stop("gldrmFit must be an S3 object of class gldrm.")
+    if (class(gldrmNull) != "gldrm")
+        stop("gldrmNull must be an S3 object of class gldrm.")
     if (p0 >= p)
-        stop("gldrmFitNull must be a sub-model of gldrmFit")
+        stop("gldrmNull must be a sub-model of gldrmFit")
     if (n != n0)
         stop("gldrm and gldrmNull have a different number of observations.")
     if (!all(names(beta0) %in% names(beta)))
@@ -73,7 +68,7 @@ gldrmLRT <- function(gldrmFit, gldrmFitNull)
 #' Print method for gldrmLRT objects. Prints results of a likelihood ratio F-test
 #' between nested models.
 #'
-#' @param x An S3 object of class 'gldrmLRT'.
+#' @param x S3 object of class 'gldrmLRT', returned from the \code{gldrmLRT} function.
 #' @param digits Number of digits for rounding.
 #' @param ... Not used. Additional arguments for print method.
 #'

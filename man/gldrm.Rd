@@ -4,7 +4,7 @@
 \alias{gldrm}
 \title{Fits a generalized linear density ratio model (GLDRM)}
 \usage{
-gldrm(formula, data = NULL, linkfun, linkinv, mu.eta, mu0 = NULL,
+gldrm(formula, data = NULL, link = "identity", mu0 = NULL,
   offset = NULL, gldrmControl = gldrm.control(),
   thetaControl = theta.control(), betaControl = beta.control(),
   f0Control = f0.control())
@@ -14,11 +14,13 @@ gldrm(formula, data = NULL, linkfun, linkinv, mu.eta, mu0 = NULL,
 
 \item{data}{An optional data frame containing the variables in the model.}
 
-\item{linkfun}{Vectorized link function.}
-
-\item{linkinv}{Vectorized inverse link function.}
-
-\item{mu.eta}{Vectorized derivative of the inverse link function.}
+\item{link}{Link function. Can be a character string to be passed to the
+\code{make.link} function in the \code{stats} package (e.g. "identity",
+"logit", or "log").
+Alternatively, \code{link} can be a list containing three functions named
+\code{linkfun}, \code{linkinv}, and \code{mu.eta}. The first is the link
+function. The second is the inverse link function. The third is the derivative
+of the inverse link function. All three functions must be vectorized.}
 
 \item{mu0}{Mean of the reference distribution. The reference distribution is
 not unique unless its mean is restricted to a specific value. This value can
@@ -27,7 +29,14 @@ may cause numerical instability. This is an optional argument with \code{mean(y)
 being the default value.}
 
 \item{offset}{Known component of the linear term. Offset must be passed through
-this argument - offset terms in the formula will be ignored.}
+this argument - offset terms in the formula will be ignored.
+value and covariate values. If sampling weights are a function of both the
+response value and covariates, then \code{sampprobs} must be a \eqn{n \times q}
+matrix, where \eqn{n} is the number of observations and \eqn{q} is the number
+of unique observed values in the response vector. If sampling weights do not
+depend on the covariate values, then \code{sampprobs} may alternatively be passed
+as a vector of length \eqn{n}. All values must be nonnegative and are assumed to
+correspond to the sorted response values in increasing order.}
 
 \item{gldrmControl}{Optional control arguments.
 Passed as an object of class "gldrmControl", which is constructed by the
@@ -50,7 +59,7 @@ Passed as an object of class "f0Control", which is constructed by the
 See \code{f0.control} documentation for details.}
 }
 \value{
-An S3 object of class "gldrmFit". See details.
+An S3 object of class "gldrm". See details.
 }
 \description{
 A GLDRM is a semiparametric generalized linear model.
@@ -68,7 +77,7 @@ The arguments \code{linkfun}, \code{linkinv}, and \code{mu.eta}
 mirror the "link-glm" class. Objects of this class can be created with the
 \code{stats::make.link} function.
 
-The "gldrmFit" class is a list of the following items.
+The "gldrm" class is a list of the following items.
 \itemize{
 \item \code{conv} Logical indicator for whether the gldrm algorithm
 converged within the iteration limit.
@@ -109,6 +118,9 @@ distribution, \eqn{b''(\theta_i)}, for each observation.
 \eqn{\hat{f}(y_i | x_i)}, for each observation. The semiparametric
 log-likelihood is equal to
 \deqn{\sum_{i=1}^n \log \hat{f}(y_i | x_i).}
+\item \code{sampprobs} If sampling probabilities were passed through the
+\code{sampprobs} argument, then they are returned here in matrix form.
+Each row corresponds to an observation.
 \item \code{llikNull} Log-likelihood of the null model with no covariates.
 \item \code{lr.stat} Likelihood ratio test statistic comparing fitted model to
 the null model. It is calculated as \eqn{2 \times (llik - llik_0) / (p-1)}.
@@ -125,21 +137,26 @@ Only returned if \code{returnf0ScoreInfo = TRUE} in the gldrmControl arguments.
 Only returned if \code{returnf0ScoreInfo = TRUE} in the gldrmControl arguments.
 \item \code{formula} Model formula.
 \item \code{data} Model data frame.
-\item \code{linkfun} Link function.
-\item \code{linkinv} Inverse link function.
-\item \code{mu.eta} Derivative of inverse link function.
+\item \code{link} Link function. If a character string was passed to the
+\code{link} argument, then this will be an object of class "link-glm".
+Otherwise, it will be the list of three functions passed to the \code{link} argument.
 }
 }
 \examples{
 data(iris, package="datasets")
 
-lf <- make.link("log")
-linkfun <- lf$linkfun  # this is equivalent to function(mu) log(mu)
-linkinv <- lf$linkinv  # this is equivalent to function(eta) exp(eta)
-mu.eta <- lf$mu.eta  # this is equivalent to function(eta) exp(eta)
-
+# Fit a gldrm with log link
 fit <- gldrm(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width + Species,
-             data=iris, linkfun, linkinv, mu.eta)
+             data=iris, link="log")
 fit
+
+# Fit a gldrm with custom link function
+link <- list()
+link$linkfun <- function(mu) log(mu)^3
+link$linkinv <- function(eta) exp(eta^(1/3))
+link$mu.eta <- function(eta) exp(eta^(1/3)) * 1/3 * eta^(-2/3)
+fit2 <- gldrm(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width + Species,
+              data=iris, link=link)
+fit2
 
 }
