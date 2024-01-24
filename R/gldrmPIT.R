@@ -39,7 +39,7 @@
 #' @export
 gldrmPIT <- function(gldrmFit, nbreaks=7, cex.main=NULL, cex.lab=NULL, cex.axis=NULL) {
     
-  if (class(gldrmFit) != "gldrm")
+  if (!isa(gldrmFit, "gldrm"))
       stop(paste0("gldrmFit must be an S3 object of class 'gldrm'",
                   " (returned from the gldrm function)"))
   if (!("fTiltMatrix" %in% names(gldrmFit)))

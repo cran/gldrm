@@ -4,10 +4,17 @@
 \alias{gldrm}
 \title{Fits a generalized linear density ratio model (GLDRM)}
 \usage{
-gldrm(formula, data = NULL, link = "identity", mu0 = NULL,
-  offset = NULL, gldrmControl = gldrm.control(),
-  thetaControl = theta.control(), betaControl = beta.control(),
-  f0Control = f0.control())
+gldrm(
+  formula,
+  data = NULL,
+  link = "identity",
+  mu0 = NULL,
+  offset = NULL,
+  gldrmControl = gldrm.control(),
+  thetaControl = theta.control(),
+  betaControl = beta.control(),
+  f0Control = f0.control()
+)
 }
 \arguments{
 \item{formula}{An object of class "formula".}

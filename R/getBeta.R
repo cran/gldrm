@@ -29,7 +29,7 @@ beta.control <- function(eps=1e-10, maxiter=1, maxhalf=10)
 #' @param ySptIndex Index of each \code{y} value within the \code{spt} vector.
 #' @param f0 Current values of f0.
 #' @param linkinv Inverse link function.
-#' @param mu.eta Deriviative of inverse link function.
+#' @param mu.eta Derivative of inverse link function.
 #' @param offset Vector of known offset values to be added to the linear
 #' combination (x' beta) for each observation. Mostly intended for likelihood ratio
 #' and score confidence intervals.
@@ -38,7 +38,7 @@ beta.control <- function(eps=1e-10, maxiter=1, maxhalf=10)
 #' previous iteration).
 #' @param thStart Starting theta values. Needs to be a list of values matching
 #' the output of the \code{getTheta} function.
-#' @param thetaConrol A "thetaControl" object returned from the \code{theta.control}
+#' @param thetaControl A "thetaControl" object returned from the \code{theta.control}
 #' function.
 #' @param betaControl A "betaControl" object returned from the \code{beta.control}
 #' function.
@@ -63,7 +63,7 @@ getBeta <- function(x, y, spt, ySptIndex, f0, linkinv, mu.eta, offset, sampprobs
                     thetaControl=theta.control(), betaControl=beta.control())
 {
     ## Extract control arguments
-    if (class(betaControl) != "betaControl")
+    if (!isa(betaControl, "betaControl"))
       stop("betaControl must be an object of class betaControl returned by betaControl() function.")
     eps <- betaControl$eps
     maxiter <- betaControl$maxiter

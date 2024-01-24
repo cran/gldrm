@@ -4,8 +4,15 @@
 \alias{gldrmCI}
 \title{Confidence intervals for gldrm coefficients}
 \usage{
-gldrmCI(gldrmFit, term, test = c("Wald", "LRT", "Score"), level = 0.95,
-  type = c("2-sided", "lb", "ub"), eps = 1e-10, maxiter = 100)
+gldrmCI(
+  gldrmFit,
+  term,
+  test = c("Wald", "LRT", "Score"),
+  level = 0.95,
+  type = c("2-sided", "lb", "ub"),
+  eps = 1e-10,
+  maxiter = 100
+)
 }
 \arguments{
 \item{gldrmFit}{A gldrm model fit. Must be an S3 object of class "gldrm",

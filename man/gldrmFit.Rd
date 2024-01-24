@@ -4,10 +4,20 @@
 \alias{gldrmFit}
 \title{Main optimization function}
 \usage{
-gldrmFit(x, y, linkfun, linkinv, mu.eta, mu0 = NULL, offset = NULL,
-  sampprobs = NULL, gldrmControl = gldrm.control(),
-  thetaControl = theta.control(), betaControl = beta.control(),
-  f0Control = f0.control())
+gldrmFit(
+  x,
+  y,
+  linkfun,
+  linkinv,
+  mu.eta,
+  mu0 = NULL,
+  offset = NULL,
+  sampprobs = NULL,
+  gldrmControl = gldrm.control(),
+  thetaControl = theta.control(),
+  betaControl = beta.control(),
+  f0Control = f0.control()
+)
 }
 \description{
 This function is called by the main \code{gldrm} function.

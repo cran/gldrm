@@ -47,7 +47,7 @@ gldrmFit <- function(x, y, linkfun, linkinv, mu.eta, mu0=NULL, offset=NULL, samp
                      betaControl=beta.control(), f0Control=f0.control())
 {
     ## Extract control arguments
-    if (class(gldrmControl) != "gldrmControl")
+    if (!isa(gldrmControl, "gldrmControl"))
         stop("gldrmControl must be an object of class \'gldrmControl\' returned by
               gldrmControl() function.")
     eps <- gldrmControl$eps

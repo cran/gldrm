@@ -64,7 +64,7 @@ gldrmCI <- function(gldrmFit, term, test=c("Wald", "LRT", "Score"), level=.95,
     maxhalf <- 10  # hard-coded argument; no user input
     test <- match.arg(test)
     type <- match.arg(type)
-    if (class(gldrmFit) != "gldrm")
+    if (!isa(gldrmFit, "gldrm"))
         stop("gldrmFit should be an object of class gldrm, returned from the gldrm function.")
     if (!(term %in% names(gldrmFit$beta)))
         stop("term should be the name of a name from the fitted coefficient vector.")

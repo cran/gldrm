@@ -1,7 +1,7 @@
 Package: gldrm
 Type: Package
 Title: Generalized Linear Density Ratio Models
-Version: 1.5
+Version: 1.6
 Authors@R: c(
     person("Michael", "Wurm", email = "wurm@uwalumni.com", role = c("aut", "cre")),
     person("Paul", "Rathouz", email = "rathouz@biostat.wisc.edu", role = "aut"))
@@ -22,12 +22,12 @@ Depends: R (>= 3.2.2)
 Imports: stats (>= 3.2.2), graphics (>= 3.2.2)
 Suggests: testthat (>= 1.0.2)
 License: MIT + file LICENSE
-LazyData: TRUE
-RoxygenNote: 6.0.1
+Encoding: UTF-8
+RoxygenNote: 7.3.1
 NeedsCompilation: no
-Packaged: 2018-04-13 05:01:04 UTC; mike
+Packaged: 2024-01-24 22:48:55 UTC; mike
 Author: Michael Wurm [aut, cre],
   Paul Rathouz [aut]
 Maintainer: Michael Wurm <wurm@uwalumni.com>
 Repository: CRAN
-Date/Publication: 2018-04-13 07:58:20 UTC
+Date/Publication: 2024-01-24 23:10:12 UTC

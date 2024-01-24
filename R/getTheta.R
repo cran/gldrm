@@ -87,7 +87,7 @@ theta.control <- function(eps=1e-10, maxiter=100, maxhalf=20, maxtheta=500,
 getTheta <- function(spt, f0, mu, sampprobs, ySptIndex, thetaStart=NULL, thetaControl=theta.control())
 {
     ## Extract control arguments
-    if (class(thetaControl) != "thetaControl")
+    if (!isa(thetaControl, "thetaControl"))
         stop("thetaControl must be an object of class \'thetaControl\' returned by
              thetaControl() function.")
     logit <- thetaControl$logit

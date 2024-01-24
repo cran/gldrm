@@ -4,8 +4,20 @@
 \alias{getf0}
 \title{f0 optimization routine}
 \usage{
-getf0(y, spt, ySptIndex, sptFreq, sampprobs, mu, mu0, f0Start, thStart,
-  thetaControl = theta.control(), f0Control = f0.control(), trace = FALSE)
+getf0(
+  y,
+  spt,
+  ySptIndex,
+  sptFreq,
+  sampprobs,
+  mu,
+  mu0,
+  f0Start,
+  thStart,
+  thetaControl = theta.control(),
+  f0Control = f0.control(),
+  trace = FALSE
+)
 }
 \arguments{
 \item{y}{Vector of response values.}

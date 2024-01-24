@@ -42,9 +42,9 @@ gldrmLRT <- function(gldrmFit, gldrmNull)
     llik <- gldrmFit$llik
     llik0 <- gldrmNull$llik
 
-    if (class(gldrmFit) != "gldrm")
+    if (!isa(gldrmFit, "gldrm"))
         stop("gldrmFit must be an S3 object of class gldrm.")
-    if (class(gldrmNull) != "gldrm")
+    if (!isa(gldrmNull, "gldrm"))
         stop("gldrmNull must be an S3 object of class gldrm.")
     if (p0 >= p)
         stop("gldrmNull must be a sub-model of gldrmFit")

@@ -4,9 +4,15 @@
 \alias{gldrm.control}
 \title{Control arguments for \code{gldrm} algorithm}
 \usage{
-gldrm.control(eps = 1e-10, maxiter = 100, returnfTiltMatrix = TRUE,
-  returnf0ScoreInfo = FALSE, print = FALSE, betaStart = NULL,
-  f0Start = NULL)
+gldrm.control(
+  eps = 1e-10,
+  maxiter = 100,
+  returnfTiltMatrix = TRUE,
+  returnf0ScoreInfo = FALSE,
+  print = FALSE,
+  betaStart = NULL,
+  f0Start = NULL
+)
 }
 \arguments{
 \item{eps}{Convergence threshold. The fitting algorithm has converged when the

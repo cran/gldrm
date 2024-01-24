@@ -82,7 +82,7 @@ getf0 <- function(y, spt, ySptIndex, sptFreq, sampprobs, mu, mu0, f0Start, thSta
                   thetaControl=theta.control(), f0Control=f0.control(), trace=FALSE)
 {
     ## Extract theta control arguments
-    if (class(f0Control) != "f0Control")
+    if (!isa(f0Control, "f0Control"))
         stop("f0Control must be an object of class f0Control returned by f0Control() function.")
     eps <- f0Control$eps
     maxiter <- f0Control$maxiter

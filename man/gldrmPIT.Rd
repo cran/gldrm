@@ -4,8 +4,13 @@
 \alias{gldrmPIT}
 \title{Confidence intervals for gldrm coefficients}
 \usage{
-gldrmPIT(gldrmFit, nbreaks = 7, cex.main = NULL, cex.lab = NULL,
-  cex.axis = NULL)
+gldrmPIT(
+  gldrmFit,
+  nbreaks = 7,
+  cex.main = NULL,
+  cex.lab = NULL,
+  cex.axis = NULL
+)
 }
 \arguments{
 \item{gldrmFit}{A gldrm model fit. Must be an S3 object of class "gldrm",

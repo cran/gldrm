@@ -4,8 +4,21 @@
 \alias{getBeta}
 \title{Beta optimization routing}
 \usage{
-getBeta(x, y, spt, ySptIndex, f0, linkinv, mu.eta, offset, sampprobs, betaStart,
-  thStart, thetaControl = theta.control(), betaControl = beta.control())
+getBeta(
+  x,
+  y,
+  spt,
+  ySptIndex,
+  f0,
+  linkinv,
+  mu.eta,
+  offset,
+  sampprobs,
+  betaStart,
+  thStart,
+  thetaControl = theta.control(),
+  betaControl = beta.control()
+)
 }
 \arguments{
 \item{x}{Covariate matrix.}
@@ -20,7 +33,7 @@ getBeta(x, y, spt, ySptIndex, f0, linkinv, mu.eta, offset, sampprobs, betaStart,
 
 \item{linkinv}{Inverse link function.}
 
-\item{mu.eta}{Deriviative of inverse link function.}
+\item{mu.eta}{Derivative of inverse link function.}
 
 \item{offset}{Vector of known offset values to be added to the linear
 combination (x' beta) for each observation. Mostly intended for likelihood ratio
@@ -34,10 +47,10 @@ previous iteration).}
 \item{thStart}{Starting theta values. Needs to be a list of values matching
 the output of the \code{getTheta} function.}
 
-\item{betaControl}{A "betaControl" object returned from the \code{beta.control}
+\item{thetaControl}{A "thetaControl" object returned from the \code{theta.control}
 function.}
 
-\item{thetaConrol}{A "thetaControl" object returned from the \code{theta.control}
+\item{betaControl}{A "betaControl" object returned from the \code{beta.control}
 function.}
 }
 \value{

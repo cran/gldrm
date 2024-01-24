@@ -5,8 +5,15 @@
 \title{getTheta
 Updates theta. Vectorized but only updates observations that have not converged.}
 \usage{
-getTheta(spt, f0, mu, sampprobs, ySptIndex, thetaStart = NULL,
-  thetaControl = theta.control())
+getTheta(
+  spt,
+  f0,
+  mu,
+  sampprobs,
+  ySptIndex,
+  thetaStart = NULL,
+  thetaControl = theta.control()
+)
 }
 \arguments{
 \item{spt}{Support of the observed response variable. (This is the set of
